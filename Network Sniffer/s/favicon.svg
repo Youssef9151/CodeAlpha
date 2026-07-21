@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="HTTP Forever open padlock">
+	<rect x="3.5" y="10.5" width="17" height="11" rx="2.6" fill="#2f8f4e"/>
+	<path d="M8 10.5V7a4 4 0 0 1 7.9-0.9" fill="none" stroke="#2f8f4e" stroke-width="2.1" stroke-linecap="round"/>
+	<circle cx="12" cy="15.1" r="1.7" fill="#f2f8f0"/>
+	<rect x="11.2" y="15.1" width="1.6" height="3.6" rx="0.8" fill="#f2f8f0"/>
+</svg>
