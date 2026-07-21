@@ -8,4 +8,4 @@ jobs:
       - name: Install Cppcheck
         run: sudo apt-get install cppcheck
       - name: Run Cppcheck
-        run: cppcheck --enable=all --inconclusive Secure Coding .
+        run: cppcheck --enable=all --inconclusive .
