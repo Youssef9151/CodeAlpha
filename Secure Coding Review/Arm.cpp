@@ -40,12 +40,34 @@ const int grabberClosedAngle = 0;
 bool lastGrabberBtnState = HIGH; 
 unsigned long lastRecordTime = 0; 
 
-// توقيت تحديث الشاشة
+// Timing & Safety
 unsigned long lastLcdUpdate = 0;
+const int safetyDistance = 15;
+const int manualMoveSpeed = 2; 
 
-// Safety & Smoothness Settings
-const int safetyDistance = 15; // زيادة المسافة قليلاً للأمان
-const int manualMoveSpeed = 2; // سرعة الحركة التدريجية في وضع التسجيل (درجة في كل لفة)
+void clearRecordedSteps() {
+  for (int i = 0; i <= maxSteps; i++) {
+    steps1[i] = 0;
+    steps2[i] = 0;
+    stepsGrabber[i] = 0;
+    stepDelays[i] = 0;
+  }
+  stepCount = 0;
+}
+
+int calculateMovementDelay(int currentAngle, int targetAngle) {
+  int delayTime;
+  int diff = abs(currentAngle - targetAngle);
+
+  if (diff > 50) {
+    delayTime = 30; 
+  } else if (diff > 10) {
+    delayTime = 15;
+  }
+  
+  return delayTime;
+}
+
 
 // --- HELPER: SMOOTH POTENTIOMETER READ ---
 int getSmoothRead(int pin) {
@@ -103,7 +125,8 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
-  // القراءة الأولية
+  clearRecordedSteps();
+
   int initialPot1 = getSmoothRead(pot1Pin);
   int initialPot2 = getSmoothRead(pot2Pin);
   
@@ -124,15 +147,13 @@ void setup() {
 void loop() {
   long currentDist = getDistance();
 
-  // --- 1. EMERGENCY CHECK ---
   if (currentDist < safetyDistance) {
     updateLCD("STOP! DIST:" + String(currentDist) + "cm");
     delay(100); 
-    return; // يخرج من الـ loop ولا ينفذ أي حركة     
+    return;      
   }
 
   if (!isPlaying) {
-    // --- PHASE 1: RECORDING (WITH SMOOTH MANUAL MOVEMENT) ---
     int potVal1 = getSmoothRead(pot1Pin);
     int potVal2 = getSmoothRead(pot2Pin);
     
@@ -141,7 +162,6 @@ void loop() {
 
     bool isMoving = false;
 
-    // تحريك Servo 1 تدريجياً نحو قيمة الـ Potentiometer
     if (abs(angle1 - targetAngle1) > 2) {
       if (angle1 < targetAngle1) angle1 += manualMoveSpeed;
       else if (angle1 > targetAngle1) angle1 -= manualMoveSpeed;
@@ -149,7 +169,6 @@ void loop() {
       isMoving = true;
     }
 
-    // تحريك Servo 2 تدريجياً نحو قيمة الـ Potentiometer
     if (abs(angle2 - targetAngle2) > 2) {
       if (angle2 < targetAngle2) angle2 += manualMoveSpeed;
       else if (angle2 > targetAngle2) angle2 -= manualMoveSpeed;
@@ -157,13 +176,11 @@ void loop() {
       isMoving = true;
     }
 
-    // تحديث الشاشة أثناء الحركة اليدوية
     if (isMoving && (millis() - lastLcdUpdate > 100)) {
       updateLCD("Recording...");
       lastLcdUpdate = millis();
     }
 
-    // زر الكلابشة (الماسك)
     bool currentGrabberBtnState = digitalRead(grabberButton);
     if (currentGrabberBtnState == LOW && lastGrabberBtnState == HIGH) {
       isGrabberClosed = !isGrabberClosed; 
@@ -173,7 +190,6 @@ void loop() {
     }
     lastGrabberBtnState = currentGrabberBtnState;
 
-    // زر التسجيل والتشغيل
     if (digitalRead(recordButton) == LOW) {
       unsigned long startTime = millis();
       while(digitalRead(recordButton) == LOW) {
@@ -201,11 +217,9 @@ void loop() {
         delay(500); 
       }
     }
-    
-    delay(15); // تأخير بسيط لجعل الحركة اليدوية سلسة وغير مهتزة
+    delay(15); 
 
   } else {
-    // --- PHASE 2: PLAYBACK ---
     for (int i = 0; i < stepCount; i++) {
       if (getDistance() < safetyDistance) {
           isPlaying = false; 
@@ -217,9 +231,11 @@ void loop() {
       
       int target1 = steps1[i];
       int target2 = steps2[i];
+      
+      int stepDelay = calculateMovementDelay(angle1, target1);
+      
       updateLCD("Playing Step " + String(i + 1));
 
-      // حركة ناعمة في وضع التشغيل
       while (angle1 != target1 || angle2 != target2) {
         if (getDistance() < safetyDistance) {
             isPlaying = false; 
@@ -237,7 +253,8 @@ void loop() {
 
         actualS1.write(angle1);
         actualS2.write(angle2);
-        delay(20); 
+        
+        delay(stepDelay); 
       }
       grabberServo.write(stepsGrabber[i]);
     } 
